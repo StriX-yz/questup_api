@@ -1,6 +1,6 @@
 from flask import Flask, request, jsonify, url_for
 from flask_cors import CORS
-from flask_mail import Mail, Message
+# from flask_mail import Mail, Message   # ← commented out (mail disabled)
 from pymongo import MongoClient
 import jwt
 import datetime
@@ -14,6 +14,9 @@ CORS(app)
 
 # --- Secret and Email Config ---
 app.config["SECRET_KEY"] = "rebellion"  # change this in production
+
+"""
+# --- Email (disabled) ---
 app.config["MAIL_SERVER"] = "smtp.gmail.com"
 app.config["MAIL_PORT"] = 587
 app.config["MAIL_USE_TLS"] = True
@@ -21,9 +24,10 @@ app.config["MAIL_USERNAME"] = "strixus17@gmail.com"
 app.config["MAIL_PASSWORD"] = "mqik dctt ixkq gwwl"
 
 mail = Mail(app)
+"""
 
 # --- MongoDB Setup ---
-MONGO_URI = "mongodb+srv://yazidmoundher_db_user:L9chQ2YsVoEITXIl@cluster0.siqi7ho.mongodb.net/?appName=Cluster0"  # or your Mongo Atlas URI
+MONGO_URI = "mongodb+srv://yazidmoundher_db_user:L9chQ2YsVoEITXIl@cluster0.siqi7ho.mongodb.net/?appName=Cluster0"
 client = MongoClient(MONGO_URI)
 db = client["questup"]
 devup_emails = db["devup_emails"]     # pre-existing users
@@ -61,6 +65,8 @@ def verify_token(token):
         return None
 
 
+"""
+# Disabled: actual email sending
 def send_verification_email(email, token):
     verify_url = url_for("verify_email_token", token=token, _external=True)
     msg = Message(
@@ -70,6 +76,13 @@ def send_verification_email(email, token):
         body=f"Welcome! Please verify your email by clicking this link:\n\n{verify_url}\n\nThis link expires in 1 hour."
     )
     mail.send(msg)
+"""
+
+# Instead of sending, we’ll just log the verification link
+def send_verification_email(email, token):
+    verify_url = url_for("verify_email_token", token=token, _external=True)
+    print(f"[DEBUG] Verification link for {email}: {verify_url}")
+    # no mail.send()
 
 
 def count_total_participants():
@@ -99,7 +112,7 @@ def can_join_departments(departments):
 def register_participant():
     """
     Registers a new participant into event_emails collection.
-    Sends a verification link via email.
+    Sends a verification link (logged only).
     """
     data = request.get_json()
     name = data.get("name")
@@ -128,12 +141,12 @@ def register_participant():
 
     event_emails.insert_one(new_participant)
 
-    # Send verification link
+    # Log verification link (no real email sent)
     token = generate_verification_token(email)
     send_verification_email(email, token)
 
     return jsonify({
-        "message": "Registration successful. Verification email sent.",
+        "message": "Registration successful. (Verification link logged to console)",
         "participant": {
             "name": name,
             "email": email,
