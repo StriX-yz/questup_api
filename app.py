@@ -36,10 +36,10 @@ event_emails = db["event_emails"]     # new event registrations
 # --- Limits ---
 MAX_GLOBAL_PARTICIPANTS = 80
 DEPARTMENT_LIMITS = {
-    "Marketing": 10,
-    "Visual": 20,
-    "Event": 10,
-    "Design": 20,
+    "marketing": 10,
+    "visual": 20,
+    "event": 10,
+    "design": 20,
     "Dev": 20
 }
 
@@ -64,19 +64,6 @@ def verify_token(token):
     except jwt.InvalidTokenError:
         return None
 
-
-"""
-# Disabled: actual email sending
-def send_verification_email(email, token):
-    verify_url = url_for("verify_email_token", token=token, _external=True)
-    msg = Message(
-        subject="Verify Your Email",
-        sender=app.config["MAIL_USERNAME"],
-        recipients=[email],
-        body=f"Welcome! Please verify your email by clicking this link:\n\n{verify_url}\n\nThis link expires in 1 hour."
-    )
-    mail.send(msg)
-"""
 
 # Instead of sending, we’ll just log the verification link
 def send_verification_email(email, token):
@@ -112,7 +99,8 @@ def can_join_departments(departments):
 def register_participant():
     """
     Registers a new participant into event_emails collection.
-    Sends a verification link (logged only).
+    Checks if the department matches the one in devup_emails.
+    Logs a verification link instead of sending it.
     """
     data = request.get_json()
     name = data.get("name")
@@ -122,19 +110,42 @@ def register_participant():
     if not name or not email or not departments:
         return jsonify({"error": "Missing required fields"}), 400
 
+    email = email.lower()
+
     # Check if already registered in event_emails
-    if event_emails.find_one({"email": email.lower()}):
+    if event_emails.find_one({"email": email}):
         return jsonify({"error": "Email already registered"}), 400
 
+    # Check global and department limits
     ok, msg = can_join_departments(departments)
     if not ok:
         return jsonify({"error": msg}), 400
 
+    # --- NEW LOGIC: Verify department match with devup_emails ---
+    devup_user = devup_emails.find_one({"email": email})
+    if not devup_user:
+        return jsonify({"error": "Email not found in DevUp records"}), 400
+
+    allowed_department = devup_user.get("department", "").strip()
+    if not allowed_department:
+        return jsonify({"error": "No department assigned for this DevUp user"}), 400
+
+    # Check if chosen department(s) match the allowed one
+    # Case-insensitive comparison
+    chosen_match = any(
+        dept.lower() == allowed_department.lower() for dept in departments
+    )
+    if not chosen_match:
+        return jsonify({
+            "error": f"Department mismatch. You are only allowed to register for '{allowed_department}'."
+        }), 400
+
     # Create record in event_emails
     new_participant = {
         "name": name,
-        "email": email.lower(),
-        "departments": departments
+        "email": email,
+        "departments": departments,
+        "verified": False,
         "created_at": datetime.datetime.utcnow()
     }
 
@@ -149,7 +160,8 @@ def register_participant():
         "participant": {
             "name": name,
             "email": email,
-            "departments": departments
+            "departments": departments,
+            "verified": False
         }
     }), 201
 
