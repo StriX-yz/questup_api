@@ -36,11 +36,11 @@ event_emails = db["event_emails"]     # new event registrations
 # --- Limits ---
 MAX_GLOBAL_PARTICIPANTS = 80
 DEPARTMENT_LIMITS = {
-    "marketing": 10,
-    "visual": 20,
-    "event": 10,
-    "design": 20,
-    "developement": 20
+    "Marketing": 10,
+    "Visual": 20,
+    "Event": 10,
+    "Design": 20,
+    "Dev": 20
 }
 
 
