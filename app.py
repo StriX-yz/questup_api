@@ -134,8 +134,7 @@ def register_participant():
     new_participant = {
         "name": name,
         "email": email.lower(),
-        "departments": departments,
-        "verified": False,
+        "departments": departments
         "created_at": datetime.datetime.utcnow()
     }
 
@@ -150,8 +149,7 @@ def register_participant():
         "participant": {
             "name": name,
             "email": email,
-            "departments": departments,
-            "verified": False
+            "departments": departments
         }
     }), 201
 
